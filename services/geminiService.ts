@@ -1,6 +1,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { ProjectInfo, ShowcaseScene, ProjectType, Character, LocationAsset, Poster, ScriptBeat, TwistOption, BudgetLineItem } from "../types";
 import { INDIAN_CINEMA_BEATS } from "../constants";
+import { deductCredit, getUserProfile } from "./supabaseClient";
 
 // --- API KEY MANAGEMENT ---
 
@@ -53,18 +54,55 @@ const extractImageFromResponse = (response: any): string | null => {
   return null;
 };
 
+// --- CREDIT SYSTEM WRAPPER ---
+// Checks credits before generation and deducts after success
+const generateImageWithCredits = async (
+  contents: any,
+  aspectRatio: string,
+  description: string
+): Promise<string | null> => {
+  // 1. Check if user has credits
+  const profile = await getUserProfile();
+  if (!profile) {
+    throw new Error("AUTHENTICATION_REQUIRED: Please sign in to generate images.");
+  }
+
+  if (profile.credits < 1) {
+    throw new Error("NO_CREDITS: You have 0 credits remaining. Please purchase more credits to continue generating images.");
+  }
+
+  // 2. Generate the image
+  let generatedImage: string | null = null;
+  try {
+    generatedImage = await generateImageWithFallback(contents, aspectRatio);
+  } catch (error) {
+    // If generation failed, don't deduct credits
+    throw error;
+  }
+
+  // 3. Deduct credit ONLY if generation succeeded
+  if (generatedImage) {
+    const deducted = await deductCredit(description);
+    if (!deducted) {
+      console.warn("Image generated but credit deduction failed. This shouldn't happen.");
+    }
+  }
+
+  return generatedImage;
+};
+
 // --- GENERIC IMAGE GENERATOR HELPER ---
 // Tries primary model, then falls back to pro model if needed.
 const generateImageWithFallback = async (
-  contents: any, 
+  contents: any,
   aspectRatio: string
 ): Promise<string | null> => {
   const ai = getAIClient();
-  
+
   // CORRECT MODELS FOR IMAGE GENERATION
   // Do NOT use 'gemini-1.5-flash' here as it does not generate images.
   const models = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"];
-  
+
   let lastError: any = null;
 
   for (const model of models) {
@@ -87,10 +125,10 @@ const generateImageWithFallback = async (
       }
     } catch (e: any) {
       console.warn(`Image generation failed with model ${model}.`, e.message);
-      
+
       // Check specifically for Rate Limit / Quota errors
-      const isQuotaError = e.message?.includes('429') || 
-                           e.message?.includes('Quota exceeded') || 
+      const isQuotaError = e.message?.includes('429') ||
+                           e.message?.includes('Quota exceeded') ||
                            e.message?.includes('RESOURCE_EXHAUSTED');
 
       if (isQuotaError) {
@@ -102,7 +140,7 @@ const generateImageWithFallback = async (
       lastError = e;
     }
   }
-  
+
   // If we get here, all models failed (and weren't quota errors that threw early)
   console.error("All image generation attempts failed. Last error:", lastError);
   if (lastError) {
@@ -268,10 +306,10 @@ export const generateSlideImage = async (imagePrompt: string, aspectRatio: '16:9
   // Map custom aspect ratios
   let targetRatio = "16:9";
   if (aspectRatio === '1:1') targetRatio = "1:1";
-  if (aspectRatio === '2:3') targetRatio = "3:4"; 
+  if (aspectRatio === '2:3') targetRatio = "3:4";
 
   const contents = { parts: [{ text: imagePrompt }] };
-  return generateImageWithFallback(contents, targetRatio);
+  return generateImageWithCredits(contents, targetRatio, 'Pitch Deck Slide Image');
 };
 
 // Specialized Poster Generator
@@ -324,7 +362,7 @@ export const generatePosterImage = async (
   if (poster.aspectRatio === '1:1') targetRatio = "1:1";
   if (poster.aspectRatio === '2:3') targetRatio = "3:4";
 
-  return generateImageWithFallback({ parts }, targetRatio);
+  return generateImageWithCredits({ parts }, targetRatio, `Movie Poster: ${poster.title}`);
 };
 
 
@@ -374,7 +412,7 @@ export const generateCharacterImage = async (
   if (character.aspectRatio === '16:9') targetRatio = "16:9";
   if (character.aspectRatio === '2:3') targetRatio = "3:4";
 
-  return generateImageWithFallback({ parts }, targetRatio);
+  return generateImageWithCredits({ parts }, targetRatio, `Character: ${character.name}`);
 };
 
 // Specialized Storyboard Generator
@@ -435,7 +473,7 @@ export const generateStoryboardImage = async (
     text: `${castingPrompt}\n\n${textPrompt}`
   });
 
-  return generateImageWithFallback({ parts }, "16:9");
+  return generateImageWithCredits({ parts }, "16:9", `Storyboard Scene: ${scene.heading}`);
 };
 
 export const generateNextShowcaseScene = async (
@@ -702,7 +740,7 @@ export const generateLocationImage = async (location: LocationAsset, sceneVibe: 
     --ar 16:9
   `;
 
-  return generateImageWithFallback({ parts: [{ text: prompt }] }, "16:9");
+  return generateImageWithCredits({ parts: [{ text: prompt }] }, "16:9", `Location: ${location.name}`);
 };
 
 export const generatePosterPrompt = async (project: ProjectInfo): Promise<string> => {

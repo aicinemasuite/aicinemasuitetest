@@ -1,0 +1,80 @@
+========================================
+   🔑 ENVIRONMENT VARIABLES REQUIRED
+========================================
+
+Copy this to your .env file:
+
+----------------------------------------
+# SUPABASE (Authentication & Database)
+----------------------------------------
+VITE_SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+📍 Get from: https://app.supabase.com/project/YOUR_PROJECT/settings/api
+
+
+----------------------------------------
+# RAZORPAY (Payment Processing)
+----------------------------------------
+VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxxxx
+
+📍 Get from: https://dashboard.razorpay.com/app/keys
+⚠️  Make sure you're in TEST MODE (toggle top-left)
+
+
+----------------------------------------
+# GOOGLE AI (Image Generation)
+----------------------------------------
+API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+📍 Get from: https://aistudio.google.com/app/apikey
+💡 Can also be set via app UI (Settings modal)
+
+
+========================================
+   ⚡ QUICK SETUP STEPS
+========================================
+
+1. Create .env file:
+   cp .env.example .env
+
+2. Paste your keys above into .env
+
+3. Restart dev server:
+   npm run dev
+
+4. Test with these credentials:
+   - Email: your@email.com
+   - Password: password123
+   - Test Card: 4111 1111 1111 1111
+
+
+========================================
+   ✅ VERIFICATION CHECKLIST
+========================================
+
+□ Can sign up with email/password
+□ Profile created with 3 free credits
+□ Credit balance shows in top-right
+□ Can generate images (credit deducts)
+□ Error appears at 0 credits
+□ "Buy Credits" modal opens
+□ Razorpay test payment works
+□ Credits added to balance
+
+
+========================================
+   🆘 TROUBLESHOOTING
+========================================
+
+Problem: "Missing Supabase credentials"
+Fix: Check .env file exists and has correct keys
+
+Problem: Payment not working
+Fix: Verify VITE_RAZORPAY_KEY_ID is in TEST mode
+
+Problem: Can't generate images
+Fix: Set API_KEY or use Settings modal in app
+
+
+========================================
